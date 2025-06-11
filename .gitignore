@@ -49,6 +49,7 @@ backup_*.*
 temp_*.*
 
 # Configuration files
+config.py
 local_config.*
 private_config.*
 
