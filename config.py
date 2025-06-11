@@ -1,6 +1,8 @@
 import os
 from dotenv import load_dotenv
 
+# Load config.env first (higher priority), then .env as backup
+load_dotenv('config.env')
 load_dotenv()
 
 class Config:
@@ -8,14 +10,20 @@ class Config:
     # Flask
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-please-change'
     
-    # MySQL configuration
-    MYSQL_USER = 'root'
-    MYSQL_PASSWORD = 'lenacjnv7'
-    MYSQL_HOST = 'localhost'
-    MYSQL_DB = 'traintiq_db'
+    # OpenAI Configuration
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY') or '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'
     
-    # SQLAlchemy
-    SQLALCHEMY_DATABASE_URI = f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
+    # MySQL configuration - use environment variables or defaults
+    MYSQL_USER = os.environ.get('MYSQL_USER', 'root')
+    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'lenacjnv7')
+    MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mysql')  # Docker service name
+    MYSQL_DB = os.environ.get('MYSQL_DATABASE', 'traintiq_db')
+    
+    # SQLAlchemy - check for full DATABASE_URL first, then build from parts
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get('DATABASE_URL') or 
+        f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # API Documentation

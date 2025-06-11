@@ -186,13 +186,32 @@ class ProfileGenerationRequest(BaseModel):
 
 class ScrapeCompanyDTO(BaseModel):
     """DTO for company scraping requests"""
-    url: HttpUrl
-    customInstructions: Optional[str] = None
+    urls: List[HttpUrl] = Field(..., min_items=1, description="One or more URLs to scrape")
+    customInstructions: Optional[str] = Field(None, description="Custom instructions for profile generation")
+    documentContent: Optional[List[str]] = Field(None, description="Extracted text content from uploaded documents")
+    documentNames: Optional[List[str]] = Field(None, description="Names of uploaded documents")
+    
+    @validator('urls')
+    def validate_urls(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError('At least one URL must be provided')
+        if len(v) > 10:  # Reasonable limit
+            raise ValueError('Maximum 10 URLs allowed')
+        return v
+    
+    @validator('documentContent')
+    def validate_document_content(cls, v, values):
+        if v and 'documentNames' in values:
+            if len(v) != len(values.get('documentNames', [])):
+                raise ValueError('Document content and names arrays must have the same length')
+        return v
 
     class Config:
         json_schema_extra = {
             "example": {
-                "url": "https://example.com",
-                "customInstructions": None
+                "urls": ["https://example.com", "https://example.com/about"],
+                "customInstructions": "Focus on technology stack and recent funding rounds",
+                "documentContent": ["Company overview document content..."],
+                "documentNames": ["company_overview.pdf"]
             }
         } 

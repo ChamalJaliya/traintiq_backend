@@ -346,10 +346,14 @@ example_request = {
 
 # Scraping request model
 scrape_model = api.model('ScrapeRequest', {
-    'url': fields.String(required=True, description='Website URL to scrape',
-                        example='https://example.com'),
-    'customInstructions': fields.String(description='Custom scraping instructions',
-                                      example='Focus on technology stack and funding details')
+    'urls': fields.List(fields.String, required=True, description='Website URLs to scrape (1-10 URLs)',
+                       example=['https://example.com', 'https://example.com/about']),
+    'customInstructions': fields.String(description='Custom instructions for profile generation',
+                                      example='Focus on technology stack, recent funding rounds, and key leadership'),
+    'documentContent': fields.List(fields.String, description='Extracted text content from uploaded documents',
+                                 example=['Company overview document content...', 'Financial report content...']),
+    'documentNames': fields.List(fields.String, description='Names of uploaded documents',
+                               example=['company_overview.pdf', 'financial_report.docx'])
 })
 
 # API Routes
@@ -554,7 +558,7 @@ class CompanyScrape(Resource):
     @api.response(400, 'Invalid URL or scraping failed')
     @api.response(502, 'External service error')
     async def post(self):
-        """Scrape company information from URL"""
+        """Scrape company information from multiple URLs and documents"""
         try:
             dto = ScrapeCompanyDTO(**api.payload)
             return await company_service.scrape_company(dto)
@@ -562,6 +566,80 @@ class CompanyScrape(Resource):
             api.abort(400, str(e))
         except ExternalServiceException as e:
             api.abort(502, str(e))
+        except Exception as e:
+            api.abort(500, str(e))
+
+# File upload model for document processing
+file_upload_model = api.model('FileUpload', {
+    'files': fields.List(fields.Raw, required=True, description='Base64 encoded files with metadata'),
+    'maxSizeMB': fields.Integer(default=10, description='Maximum file size in MB')
+})
+
+@api.route('/process-files')
+class FileProcessor(Resource):
+    @api.doc('process_files')
+    @api.expect(file_upload_model)
+    @api.response(200, 'Files processed successfully')
+    @api.response(400, 'Invalid file format or processing failed')
+    def post(self):
+        """Process uploaded documents and extract text content"""
+        try:
+            from app.services.file_processing_service import FileProcessingService
+            
+            file_processor = FileProcessingService()
+            payload = api.payload
+            
+            if not payload.get('files'):
+                api.abort(400, 'No files provided')
+            
+            processed_files = []
+            max_size_mb = payload.get('maxSizeMB', 10)
+            
+            for file_data in payload['files']:
+                filename = file_data.get('name', 'unknown')
+                content = file_data.get('content', '')
+                
+                # Validate file size
+                if not file_processor.validate_file_size(content, max_size_mb):
+                    processed_files.append({
+                        'filename': filename,
+                        'status': 'error',
+                        'message': f'File size exceeds {max_size_mb}MB limit'
+                    })
+                    continue
+                
+                # Check if format is supported
+                if not file_processor.is_supported_format(filename):
+                    processed_files.append({
+                        'filename': filename,
+                        'status': 'error',
+                        'message': f'Unsupported file format. Supported: {file_processor.get_supported_formats()}'
+                    })
+                    continue
+                
+                try:
+                    # Extract text content
+                    text_content = file_processor.extract_text_from_base64(content, filename)
+                    processed_files.append({
+                        'filename': filename,
+                        'status': 'success',
+                        'textContent': text_content,
+                        'characterCount': len(text_content)
+                    })
+                except Exception as e:
+                    processed_files.append({
+                        'filename': filename,
+                        'status': 'error',
+                        'message': str(e)
+                    })
+            
+            return {
+                'processedFiles': processed_files,
+                'supportedFormats': file_processor.get_supported_formats(),
+                'totalFiles': len(payload['files']),
+                'successfulFiles': len([f for f in processed_files if f['status'] == 'success'])
+            }
+            
         except Exception as e:
             api.abort(500, str(e))
 

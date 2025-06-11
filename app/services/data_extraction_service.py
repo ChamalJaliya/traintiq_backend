@@ -12,11 +12,17 @@ class DataExtractionService:
     This is a simplified version; real-world extraction can be much more complex.
     """
 
-    def extract_company_data(self, soup: BeautifulSoup) -> dict:
+    def extract_company_data(self, content: str, custom_instructions: str = None, data_sources: list = None) -> dict:
         """
-        Extracts various pieces of company data from the BeautifulSoup object.
+        Extracts various pieces of company data from content (HTML or text).
         This method will contain heuristics and patterns for common data points.
         """
+        # If content is HTML, parse it with BeautifulSoup
+        if '<html' in content.lower() or '<body' in content.lower():
+            soup = BeautifulSoup(content, 'html.parser')
+        else:
+            # Create a mock soup object for text content
+            soup = BeautifulSoup(f"<html><body><p>{content}</p></body></html>", 'html.parser')
         data = {}
 
         # --- Basic Information ---
@@ -44,6 +50,16 @@ class DataExtractionService:
         # data['awards'] = self._extract_awards(soup)
         # data['recent_news_links'] = self._extract_recent_news_links(soup)
         # data['keywords'] = self._extract_keywords(soup)
+
+        # Handle custom instructions
+        if custom_instructions:
+            data['custom_instructions_used'] = custom_instructions
+            # Apply custom focus based on instructions
+            data = self._apply_custom_instructions(data, soup, custom_instructions)
+        
+        # Add data source information
+        if data_sources:
+            data['data_sources'] = data_sources
 
         return data
 
@@ -291,6 +307,70 @@ class DataExtractionService:
 
         logger.debug("Could not extract mission statement.")
         return None
+
+    def _apply_custom_instructions(self, data: dict, soup: BeautifulSoup, instructions: str) -> dict:
+        """
+        Apply custom instructions to enhance data extraction based on user requirements.
+        This method looks for specific keywords in instructions and extracts relevant data.
+        """
+        instructions_lower = instructions.lower()
+        text_content = soup.get_text().lower()
+        
+        # Focus on technology stack if mentioned
+        if any(keyword in instructions_lower for keyword in ['technology', 'tech stack', 'technical', 'programming', 'software', 'development']):
+            tech_keywords = ['python', 'javascript', 'react', 'angular', 'vue', 'node.js', 'java', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin', 'c++', 'c#']
+            found_tech = [tech for tech in tech_keywords if tech in text_content]
+            if found_tech:
+                data['technology_stack'] = found_tech
+        
+        # Focus on funding if mentioned
+        if any(keyword in instructions_lower for keyword in ['funding', 'investment', 'raised', 'capital', 'venture', 'seed', 'series']):
+            funding_patterns = [
+                r'raised\s+\$?(\d+(?:\.\d+)?)\s*(?:million|m|billion|b|k|thousand)',
+                r'funding\s+(?:of\s+)?\$?(\d+(?:\.\d+)?)\s*(?:million|m|billion|b|k|thousand)',
+                r'series\s+[a-z]\s+.*?\$?(\d+(?:\.\d+)?)\s*(?:million|m|billion|b|k|thousand)'
+            ]
+            for pattern in funding_patterns:
+                matches = re.findall(pattern, text_content, re.IGNORECASE)
+                if matches:
+                    data['funding_information'] = matches
+                    break
+        
+        # Focus on leadership if mentioned
+        if any(keyword in instructions_lower for keyword in ['leadership', 'management', 'team', 'founders', 'ceo', 'executive']):
+            leadership_patterns = [
+                r'(ceo|chief executive officer):\s*([^,\n]+)',
+                r'(cto|chief technology officer):\s*([^,\n]+)',
+                r'(cfo|chief financial officer):\s*([^,\n]+)',
+                r'founded by\s+([^,\n]+)',
+                r'co-founder[s]?:\s*([^,\n]+)'
+            ]
+            leadership_info = {}
+            for pattern in leadership_patterns:
+                matches = re.findall(pattern, text_content, re.IGNORECASE)
+                for match in matches:
+                    if len(match) == 2:
+                        leadership_info[match[0]] = match[1].strip()
+            if leadership_info:
+                data['leadership_team'] = leadership_info
+        
+        # Focus on products/services if mentioned
+        if any(keyword in instructions_lower for keyword in ['products', 'services', 'offerings', 'solutions', 'platform']):
+            # Enhanced product/service extraction
+            product_indicators = ['product', 'service', 'solution', 'platform', 'tool', 'application', 'software']
+            enhanced_products = []
+            for indicator in product_indicators:
+                pattern = rf'{indicator}[s]?[:\-]?\s*([^,\n\.]+)'
+                matches = re.findall(pattern, text_content, re.IGNORECASE)
+                enhanced_products.extend([match.strip() for match in matches if len(match) > 3])
+            if enhanced_products:
+                data['enhanced_products_services'] = list(set(enhanced_products))
+        
+        # Add focused description based on instructions
+        if data.get('description'):
+            data['custom_focused_description'] = f"Based on focus on {instructions}: {data['description']}"
+        
+        return data
 
 # Example Usage (for testing, will be called from API later)
 if __name__ == '__main__':

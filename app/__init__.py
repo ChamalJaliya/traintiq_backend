@@ -7,8 +7,9 @@ from config import Config
 from dotenv import load_dotenv
 import os
 
-# Load environment variables
-load_dotenv()
+# Load environment variables - prioritize config.env
+load_dotenv('config.env')  # Load config.env file FIRST (higher priority)
+load_dotenv()  # Load .env file as backup
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -48,10 +49,27 @@ def create_app(config_class=Config):
     from app.api import api
     from app.api.company_routes import company_bp
     from app.api.companies_routes import companies_bp
+    from app.api.chat_routes import chat_bp
 
     api.init_app(app)
     app.register_blueprint(company_bp)
     app.register_blueprint(companies_bp)
+    app.register_blueprint(chat_bp, url_prefix='/api')
+
+    # Add health check endpoint
+    @app.route('/health')
+    def health_check():
+        """Health check endpoint for Docker and monitoring"""
+        try:
+            from sqlalchemy import text
+            # Test database connection
+            db.session.execute(text('SELECT 1'))
+            return {'status': 'healthy', 'database': 'connected'}, 200
+        except Exception as e:
+            return {'status': 'unhealthy', 'error': str(e)}, 500
+
+    # Import models to ensure they are created
+    from app.models.chat import ChatConversation, ChatMessage, ChatAnalytics
 
     # Create database tables
     with app.app_context():

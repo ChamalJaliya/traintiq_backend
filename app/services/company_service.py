@@ -69,30 +69,49 @@ class CompanyService(BaseService[Company, CreateCompanyDTO, UpdateCompanyDTO, Cr
         return await super().update(id, dto)
 
     async def scrape_company(self, dto: ScrapeCompanyDTO) -> CreateCompanyDTO:
-        """Scrape company information and create/update profile"""
-        # Scrape website
-        html_content = await self.scraping_service.scrape_website(str(dto.url))
+        """Scrape company information from multiple URLs and documents"""
+        all_content = []
+        scraping_sources = []
         
-        # Extract data
+        # Scrape all provided URLs
+        for url in dto.urls:
+            try:
+                html_content = await self.scraping_service.scrape_website(str(url))
+                all_content.append(html_content)
+                scraping_sources.append(str(url))
+            except Exception as e:
+                print(f"Failed to scrape {url}: {e}")
+                # Continue with other URLs even if one fails
+                continue
+        
+        # Add document content if provided
+        if dto.documentContent and dto.documentNames:
+            for i, content in enumerate(dto.documentContent):
+                all_content.append(content)
+                doc_name = dto.documentNames[i] if i < len(dto.documentNames) else f"document_{i+1}"
+                scraping_sources.append(f"uploaded_document: {doc_name}")
+        
+        # Combine all content
+        combined_content = "\n\n--- CONTENT SEPARATOR ---\n\n".join(all_content)
+        
+        # Extract data with custom instructions
         extracted_data = await self.data_extraction_service.extract_company_data(
-            html_content,
-            scrape_depth=dto.scrape_depth,
-            include_social_media=dto.include_social_media
+            combined_content,
+            custom_instructions=dto.customInstructions,
+            data_sources=scraping_sources
         )
-
-        # Create or update company profile
-        if dto.company_id:
-            # Update existing company
-            company = self.repository.get_by_id(dto.company_id)
-            if not company:
-                raise NotFoundException(f"Company with ID {dto.company_id} not found")
-            
-            update_dto = UpdateCompanyDTO(**extracted_data)
-            return await self.update_company(dto.company_id, update_dto)
-        else:
-            # Create new company
-            create_dto = CreateCompanyDTO(**extracted_data)
-            return await self.create_company(create_dto)
+        
+        # Add metadata about sources
+        if 'scrapedData' not in extracted_data:
+            extracted_data['scrapedData'] = {}
+        
+        extracted_data['scrapedData']['sources'] = scraping_sources
+        extracted_data['scrapedData']['lastScraped'] = datetime.now()
+        extracted_data['scrapedData']['contentSources'] = len(all_content)
+        
+        # Create new company profile
+        create_dto = CreateCompanyDTO(**extracted_data)
+        return await self.create_company(create_dto)
 
     def search_companies(
         self,

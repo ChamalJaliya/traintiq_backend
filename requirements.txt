@@ -1,5 +1,7 @@
 Flask==3.0.0
 Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.5
+Flask-CORS==4.0.0
 marshmallow==3.20.1
 flask-marshmallow==0.15.0
 python-dotenv==1.0.0
@@ -14,8 +16,14 @@ pydantic==2.6.1
 email-validator==2.1.0
 python-dateutil==2.8.2
 aiohttp==3.9.1
-beautifulsoup4==4.12.2
 lxml==5.1.0
 gunicorn==21.2.0
-Flask-CORS==4.0.0
 waitress==2.1.2
+openai==1.40.0
+redis==5.0.1
+prometheus-flask-exporter==0.23.0
+
+# Document processing dependencies
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+python-docx==1.1.0
