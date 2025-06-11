@@ -1,3 +1,4 @@
+# Python
 .idea/
 .vscode/
 .venv*/
@@ -8,4 +9,51 @@ dist/
 htmlcov/
 .tox/
 docs/_build/
-./.env
+
+# ==========================================
+# SECURITY: Environment and Configuration Files  
+# ==========================================
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+*.env
+config.env
+
+# Instance folder
+instance/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+logs/
+*.log
+
+# API Keys and sensitive files
+api_keys.*
+secrets.*
+credentials.*
+*_secrets.*
+*_keys.*
+
+# Backup files that might contain secrets
+*_backup.*
+backup_*.*
+temp_*.*
+
+# Configuration files
+local_config.*
+private_config.*
+
+# Flask specific
+flask_session/
+
+# Docker
+.dockerignore.local
