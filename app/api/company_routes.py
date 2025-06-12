@@ -4,7 +4,7 @@ from app import db
 from app.models.company import Company
 from app.schemas.company_schema import CompanyProfileSchema
 from app.api import api
-from app.services.company_service import CompanyService
+from app.services.core.company_service import CompanyService
 from app.dto.company_dto import (
     CreateCompanyDTO, UpdateCompanyDTO, ScrapeCompanyDTO,
     CompanyProfileResponseDTO, GeoLocation, SocialMediaProfile,
@@ -19,9 +19,9 @@ from app.exceptions import (
 )
 
 # Import your services
-from app.services.scraping_service import ScrapingService
-from app.services.data_extraction_service import DataExtractionService
-from app.services.profile_generation_service import ProfileGenerationService
+from app.services.data.scraping_service import ScrapingService
+from app.services.data.data_extraction_service import DataExtractionService
+from app.services.core.profile_generation_service import ProfileGenerationService
 import uuid
 from datetime import datetime
 
@@ -584,7 +584,7 @@ class FileProcessor(Resource):
     def post(self):
         """Process uploaded documents and extract text content"""
         try:
-            from app.services.file_processing_service import FileProcessingService
+            from app.services.data.file_processing_service import FileProcessingService
             
             file_processor = FileProcessingService()
             payload = api.payload

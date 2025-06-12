@@ -5,7 +5,7 @@ Uses improved architecture with proper logging and service management
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_restx import Api, Resource, fields, Namespace
-from app.services.chat_service import ChatService
+from app.services.ai.chat_service import ChatService
 from app.models.chat import ChatConversation, ChatMessage, ChatAnalytics
 from app.core.decorators import (
     with_request_id, validate_request_data, 

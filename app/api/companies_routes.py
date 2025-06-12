@@ -1,6 +1,6 @@
 from flask import Blueprint
 from flask_restx import Resource, Namespace, fields, Api
-from app.services.company_service import CompanyService
+from app.services.core.company_service import CompanyService
 from app.schemas.company_schema import CompanyProfileSchema
 from app.exceptions import ValidationException, DatabaseException
 from app import db

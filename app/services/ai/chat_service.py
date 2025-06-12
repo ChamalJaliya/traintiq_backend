@@ -18,8 +18,8 @@ except ImportError:
 
 from app.core.base_service import BaseService
 from app.core.decorators import log_execution_time, handle_exceptions
-from app.services.prompt_engine import PromptEngine
-from app.services.knowledge_base import KnowledgeBase
+from app.services.ai.prompt_engine import PromptEngine
+from app.services.ai.knowledge_base import KnowledgeBase
 
 class ChatService(BaseService):
     """

@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from app.services.base_service import BaseService
+from app.services.core.base_service import BaseService
 from app.models.company import Company
 from app.repositories.company_repository import CompanyRepository
 from app.dto.company_dto import (
@@ -10,8 +10,8 @@ from app.dto.company_dto import (
     CompanySize
 )
 from app.exceptions import ValidationException, NotFoundException
-from app.services.scraping_service import ScrapingService
-from app.services.data_extraction_service import DataExtractionService
+from app.services.data.scraping_service import ScrapingService
+from app.services.data.data_extraction_service import DataExtractionService
 
 class CompanyService(BaseService[Company, CreateCompanyDTO, UpdateCompanyDTO, CreateCompanyDTO]):
     def __init__(self):

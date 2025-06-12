@@ -1,9 +1,10 @@
 import os
 from dotenv import load_dotenv
 
-# Load config.env first (higher priority), then .env as backup
-load_dotenv('config.env')
-load_dotenv()
+# Load local config first, then Docker config as backup
+load_dotenv('config.env.local')  # Local development
+load_dotenv('config.env')        # Docker config as backup  
+load_dotenv()                    # .env as final backup
 
 class Config:
     """Base configuration"""
