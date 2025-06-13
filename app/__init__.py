@@ -140,10 +140,12 @@ def create_app(config_class=Config):
     from app.api.enhanced_profile_routes import enhanced_profile_bp
     from app.api.chat_routes import chat_bp
     from app.api.company_routes import company_bp
+    # from app.api.resume import resume_bp  # Temporarily disabled due to missing schemas
     
     app.register_blueprint(enhanced_profile_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(company_bp)
+    # app.register_blueprint(resume_bp)  # Temporarily disabled
     
     # Create database tables
     with app.app_context():
