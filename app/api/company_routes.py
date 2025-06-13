@@ -26,7 +26,9 @@ import uuid
 from datetime import datetime
 
 # Create Blueprint and API namespace
-company_bp = Blueprint('company_bp', __name__)
+company_bp = Blueprint('company_bp', __name__, url_prefix='/api/company')
+from flask_restx import Api
+api_instance = Api(company_bp, doc='/company/docs/', title='TraintiQ Company API', description='Company Management API')
 api = Namespace('company', description='Company operations')
 
 # Initialize schemas
@@ -642,4 +644,7 @@ class FileProcessor(Resource):
             
         except Exception as e:
             api.abort(500, str(e))
+
+# Register namespace
+api_instance.add_namespace(api)
 

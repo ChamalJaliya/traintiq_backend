@@ -34,7 +34,12 @@ def create_app(config_class=Config):
     db.init_app(app)
     ma.init_app(app)
     migrate.init_app(app, db)
-    CORS(app, origins=["http://localhost:4200", "http://127.0.0.1:4200"])
+    
+    # Enhanced CORS configuration
+    CORS(app, 
+         origins=["http://localhost:4200", "http://127.0.0.1:4200"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
     
     # Configure logging
     logging.basicConfig(
