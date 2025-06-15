@@ -16,7 +16,7 @@ class Config:
     
     # MySQL configuration - use environment variables or defaults
     MYSQL_USER = os.environ.get('MYSQL_USER', 'root')
-    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'lenacjnv7')
+    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'N1pun$')
     MYSQL_HOST = os.environ.get('MYSQL_HOST', 'mysql')  # Docker service name
     MYSQL_DB = os.environ.get('MYSQL_DATABASE', 'traintiq_db')
     

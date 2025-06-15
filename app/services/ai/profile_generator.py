@@ -9,7 +9,7 @@ from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader
 from langchain_community.vectorstores import FAISS
 from langchain.chains.summarize import load_summarize_chain
@@ -19,24 +19,26 @@ from app.services.data.document_processor import DocumentProcessor
 
 logger = logging.getLogger(__name__)
 
+
 class ProfileGenerator:
     """LangChain-powered profile generation service"""
-    
+
     def __init__(self):
         self.openai_api_key = os.getenv('OPENAI_API_KEY')
         if not self.openai_api_key:
-            logger.warning("OpenAI API key not found. Profile generation will be limited.")
-        
+            logger.warning(
+                "OpenAI API key not found. Profile generation will be limited.")
+
         self.document_processor = DocumentProcessor()
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=4000,
             chunk_overlap=200,
             length_function=len,
         )
-        
+
         # Initialize models
         self._initialize_models()
-    
+
     def _initialize_models(self):
         """Initialize LangChain models"""
         if self.openai_api_key:
@@ -46,7 +48,8 @@ class ProfileGenerator:
                     model_name="gpt-3.5-turbo",
                     openai_api_key=self.openai_api_key
                 )
-                self.embeddings = OpenAIEmbeddings(openai_api_key=self.openai_api_key)
+                self.embeddings = OpenAIEmbeddings(
+                    openai_api_key=self.openai_api_key)
             except Exception as e:
                 logger.error(f"Failed to initialize OpenAI models: {e}")
                 self.llm = None
@@ -54,7 +57,7 @@ class ProfileGenerator:
         else:
             self.llm = None
             self.embeddings = None
-    
+
     def generate_profile(
         self,
         documents_content: List[str],
@@ -64,42 +67,45 @@ class ProfileGenerator:
     ) -> Tuple[str, Dict[str, Any]]:
         """
         Generate a profile from document content
-        
+
         Args:
             documents_content: List of extracted text from documents
             profile_type: Type of profile to generate
             custom_instructions: Custom instructions from user
             template: Profile template configuration
-            
+
         Returns:
             Tuple of (generated_profile, metadata)
         """
         if not self.llm:
-            raise ValueError("OpenAI API not available. Cannot generate profile.")
-        
+            raise ValueError(
+                "OpenAI API not available. Cannot generate profile.")
+
         start_time = datetime.now()
-        
+
         try:
             # Combine all document content
             combined_content = "\n\n".join(documents_content)
-            
+
             # Analyze content first
-            content_analysis = self.document_processor.analyze_content(combined_content)
-            
+            content_analysis = self.document_processor.analyze_content(
+                combined_content)
+
             # Create documents for processing
             documents = [Document(page_content=combined_content)]
-            
+
             # Split documents if too large
             if len(combined_content) > 8000:
                 documents = self.text_splitter.split_documents(documents)
-            
+
             # Generate summary if multiple documents
             summary = ""
             if len(documents) > 1:
                 summary = self._generate_summary_sync(documents)
             else:
-                summary = combined_content[:2000] + "..." if len(combined_content) > 2000 else combined_content
-            
+                summary = combined_content[:2000] + "..." if len(
+                    combined_content) > 2000 else combined_content
+
             # Generate the profile
             profile_content = self._generate_profile_content_sync(
                 summary,
@@ -108,14 +114,14 @@ class ProfileGenerator:
                 custom_instructions,
                 template
             )
-            
+
             # Calculate confidence score
             confidence_score = self._calculate_confidence_score(
                 profile_content,
                 content_analysis,
                 len(documents_content)
             )
-            
+
             metadata = {
                 'generation_time': (datetime.now() - start_time).total_seconds(),
                 'input_documents_count': len(documents_content),
@@ -125,13 +131,13 @@ class ProfileGenerator:
                 'template_used': template['name'] if template else 'default',
                 'confidence_score': confidence_score
             }
-            
+
             return profile_content, metadata
-            
+
         except Exception as e:
             logger.error(f"Error generating profile: {e}")
             raise e
-    
+
     def _generate_summary_sync(self, documents: List[Document]) -> str:
         """Generate a summary of multiple documents (synchronous)"""
         try:
@@ -140,19 +146,19 @@ class ProfileGenerator:
                 chain_type="map_reduce",
                 verbose=False
             )
-            
+
             summary = summarize_chain.run(documents)
             return summary
-            
+
         except Exception as e:
             logger.error(f"Error generating summary: {e}")
             # Fallback: concatenate first 1000 chars of each document
             return "\n\n".join([doc.page_content[:1000] for doc in documents])
-    
+
     async def _generate_summary(self, documents: List[Document]) -> str:
         """Generate a summary of multiple documents (async version)"""
         return self._generate_summary_sync(documents)
-    
+
     def _generate_profile_content_sync(
         self,
         content_summary: str,
@@ -162,18 +168,21 @@ class ProfileGenerator:
         template: Optional[Dict[str, Any]] = None
     ) -> str:
         """Generate the actual profile content (synchronous)"""
-        
+
         # Create the prompt based on profile type
         if template and template.get('prompt_template'):
             prompt_template = template['prompt_template']
             system_instructions = template.get('system_instructions', '')
         else:
-            prompt_template, system_instructions = self._get_default_template(profile_type)
-        
+            prompt_template, system_instructions = self._get_default_template(
+                profile_type)
+
         # Extract key information for the prompt
-        key_entities = [ent['text'] for ent in content_analysis.get('entities', [])[:10]]
-        key_keywords = [kw['word'] for kw in content_analysis.get('keywords', [])[:15]]
-        
+        key_entities = [ent['text']
+                        for ent in content_analysis.get('entities', [])[:10]]
+        key_keywords = [kw['word']
+                        for kw in content_analysis.get('keywords', [])[:15]]
+
         # Build the context
         context = {
             'content_summary': content_summary,
@@ -184,16 +193,16 @@ class ProfileGenerator:
             'word_count': content_analysis.get('summary_stats', {}).get('total_words', 0),
             'document_structure': json.dumps(content_analysis.get('content_structure', {}), indent=2)
         }
-        
+
         # Create the prompt
         prompt = PromptTemplate(
             template=prompt_template,
             input_variables=list(context.keys())
         )
-        
+
         # Create the chain
         chain = LLMChain(llm=self.llm, prompt=prompt)
-        
+
         # Generate the profile (synchronous)
         try:
             result = chain.run(**context)
@@ -202,7 +211,7 @@ class ProfileGenerator:
             logger.error(f"Error in LLM chain execution: {e}")
             # Fallback response
             return f"Profile generation failed: {str(e)}"
-    
+
     async def _generate_profile_content(
         self,
         content_summary: str,
@@ -215,10 +224,10 @@ class ProfileGenerator:
         return self._generate_profile_content_sync(
             content_summary, content_analysis, profile_type, custom_instructions, template
         )
-    
+
     def _get_default_template(self, profile_type: str) -> Tuple[str, str]:
         """Get default template for different profile types"""
-        
+
         templates = {
             'job_profile': {
                 'system': "You are an expert HR professional and career consultant specializing in creating comprehensive job profiles.",
@@ -264,7 +273,7 @@ Please create a professional job profile that includes:
 Format the response in a clear, professional manner suitable for job postings or internal documentation.
 """
             },
-            
+
             'project_profile': {
                 'system': "You are an experienced project manager and business analyst who creates detailed project profiles.",
                 'prompt': """
@@ -316,7 +325,7 @@ Please create a detailed project profile that includes:
 Format the response professionally for project documentation and planning purposes.
 """
             },
-            
+
             'company_profile': {
                 'system': "You are a business analyst specializing in creating comprehensive company profiles for market research and partnership analysis.",
                 'prompt': """
@@ -370,7 +379,7 @@ Please create a detailed company profile that includes:
 Format the response professionally for business intelligence and partnership evaluation purposes.
 """
             },
-            
+
             'skills_profile': {
                 'system': "You are a talent assessment expert who creates detailed skills profiles for individuals or roles.",
                 'prompt': """
@@ -424,7 +433,7 @@ Format the response to be useful for talent management, recruitment, and career 
 """
             }
         }
-        
+
         default_template = {
             'system': "You are an expert analyst who creates comprehensive profiles from document content.",
             'prompt': """
@@ -446,10 +455,10 @@ Focus on actionable insights and key information that would be valuable for deci
 The profile should be professional, comprehensive, and well-organized.
 """
         }
-        
+
         template = templates.get(profile_type, default_template)
         return template['prompt'], template['system']
-    
+
     def _calculate_confidence_score(
         self,
         generated_profile: str,
@@ -457,18 +466,19 @@ The profile should be professional, comprehensive, and well-organized.
         num_documents: int
     ) -> float:
         """Calculate confidence score for the generated profile"""
-        
+
         score = 0.0
-        
+
         # Base score from content quality
-        total_words = content_analysis.get('summary_stats', {}).get('total_words', 0)
+        total_words = content_analysis.get(
+            'summary_stats', {}).get('total_words', 0)
         if total_words > 1000:
             score += 0.3
         elif total_words > 500:
             score += 0.2
         elif total_words > 100:
             score += 0.1
-        
+
         # Score from entity extraction
         entities_count = len(content_analysis.get('entities', []))
         if entities_count > 10:
@@ -477,7 +487,7 @@ The profile should be professional, comprehensive, and well-organized.
             score += 0.15
         elif entities_count > 0:
             score += 0.1
-        
+
         # Score from keywords
         keywords_count = len(content_analysis.get('keywords', []))
         if keywords_count > 15:
@@ -486,61 +496,66 @@ The profile should be professional, comprehensive, and well-organized.
             score += 0.15
         elif keywords_count > 5:
             score += 0.1
-        
+
         # Score from document structure
         structure = content_analysis.get('content_structure', {})
         if structure.get('bullet_points', 0) > 0 or structure.get('numbered_items', 0) > 0:
             score += 0.1
-        
+
         # Score from number of input documents
         if num_documents > 3:
             score += 0.1
         elif num_documents > 1:
             score += 0.05
-        
+
         # Score from generated profile length and structure
         profile_words = len(generated_profile.split())
         if profile_words > 500:
             score += 0.1
         elif profile_words > 200:
             score += 0.05
-        
+
         # Normalize to 0-1 range
         return min(1.0, score)
-    
+
     async def generate_profile_suggestions(
         self,
         content_analysis: Dict[str, Any],
         profile_type: str
     ) -> List[str]:
         """Generate suggestions for profile improvement"""
-        
+
         suggestions = []
-        
+
         # Check content quality
         stats = content_analysis.get('summary_stats', {})
         if stats.get('total_words', 0) < 100:
-            suggestions.append("Consider providing more detailed content for better profile generation")
-        
+            suggestions.append(
+                "Consider providing more detailed content for better profile generation")
+
         # Check for entities
         entities = content_analysis.get('entities', [])
         if len(entities) < 3:
-            suggestions.append("Add more specific names, organizations, or technical terms for richer profiles")
-        
+            suggestions.append(
+                "Add more specific names, organizations, or technical terms for richer profiles")
+
         # Check document structure
         structure = content_analysis.get('content_structure', {})
         if structure.get('bullet_points', 0) == 0 and structure.get('numbered_items', 0) == 0:
-            suggestions.append("Structured content (bullet points, lists) helps create better organized profiles")
-        
+            suggestions.append(
+                "Structured content (bullet points, lists) helps create better organized profiles")
+
         # Profile-specific suggestions
         if profile_type == 'job_profile':
-            if not any(keyword in ' '.join([kw['word'] for kw in content_analysis.get('keywords', [])]) 
-                      for keyword in ['experience', 'skill', 'qualification', 'responsibility']):
-                suggestions.append("Include more details about required skills, experience, and responsibilities")
-        
+            if not any(keyword in ' '.join([kw['word'] for kw in content_analysis.get('keywords', [])])
+                       for keyword in ['experience', 'skill', 'qualification', 'responsibility']):
+                suggestions.append(
+                    "Include more details about required skills, experience, and responsibilities")
+
         elif profile_type == 'project_profile':
-            if not any(keyword in ' '.join([kw['word'] for kw in content_analysis.get('keywords', [])]) 
-                      for keyword in ['project', 'requirement', 'deliverable', 'timeline']):
-                suggestions.append("Add more information about project requirements, deliverables, and timelines")
-        
-        return suggestions 
+            if not any(keyword in ' '.join([kw['word'] for kw in content_analysis.get('keywords', [])])
+                       for keyword in ['project', 'requirement', 'deliverable', 'timeline']):
+                suggestions.append(
+                    "Add more information about project requirements, deliverables, and timelines")
+
+        return suggestions
